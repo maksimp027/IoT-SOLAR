@@ -54,7 +54,7 @@ Open `solar_iot_dashboard.html` in your browser to observe the real-time analyti
 
 ## Live UI Preview
 Don't want to spin up the database and backend? 
-**[Download or open `preview.html`](preview.html)** in your browser to see the interactive UI with static mock data.
+**[Download or open `preview.html`]([preview.html](https://maksimp027.github.io/IoT-SOLAR/preview.html))** in your browser to see the interactive UI with static mock data.
 
 ---
 
