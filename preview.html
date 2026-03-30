@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar IoT | STATIC DEMO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+        :root { --bg: #050505; --card-bg: #0d0d0d; --teal: #2dd4bf; --yellow: #facc15; --border: rgba(255, 255, 255, 0.05); }
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--bg); color: #ffffff; margin: 0; overflow-x: hidden; letter-spacing: -0.01em; }
+        .solar-text-gradient { background: linear-gradient(90deg, var(--yellow) 0%, var(--teal) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 2px; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
+        .heat-cell { height: 35px; border-radius: 1px; transition: all 0.3s ease; }
+        .lv-0{background:#0a0f14;}.lv-1{background:#0d2625;}.lv-2{background:#0f3d3b;}.lv-3{background:#115451;}.lv-4{background:#0d7a74;}.lv-5{background:#0ea5e9;}.lv-6{background:#2dd4bf;}.lv-7{background:#5eead4;}.lv-8{background:#99f6e4;}.lv-9{background:#fef08a;}.lv-10{background:#fde047;}.lv-11{background:#facc15; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);}
+        .accent-line { height: 4px; width: 60px; background: linear-gradient(90deg, var(--yellow), var(--teal)); margin-bottom: 1.5rem; }
+        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: #333; }
+        .demo-badge { color: #facc15; font-size: 10px; border: 1px dashed #facc15; padding: 4px 8px; border-radius: 2px; letter-spacing: 0.1em; }
+    </style>
+</head>
+<body class="p-6 lg:p-12 uppercase text-[10px] font-bold tracking-[0.1em] select-none">
+
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
+        <div>
+            <div class="flex items-center space-x-4 mb-3">
+                <div class="w-16 h-[1px] bg-white/20"></div>
+                <span class="text-white/40 tracking-[0.5em]">PHYSICS_BASED_METRICS</span>
+                <span class="demo-badge">STATIC DEMO MODE</span>
+            </div>
+            <h1 class="text-6xl lg:text-9xl font-black tracking-tighter">SOLAR <span class="solar-text-gradient">GENERIC</span></h1>
+        </div>
+        <div class="flex flex-col items-end border-r-4 border-teal-400 pr-6">
+            <span class="text-white/20 mb-1 tracking-[0.2em]">TELEMETRY_STREAM</span>
+            <span class="text-3xl font-black italic">12_ACTIVE_UNITS</span>
+        </div>
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div class="glass-card p-10 border-l-4 border-yellow-400">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">CURRENT POWER</p>
+            <div class="flex items-baseline space-x-2"><span class="text-6xl font-black" id="pwr-val">42.5</span><span class="text-yellow-400 text-lg">KW</span></div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-teal-400">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">ENERGY YIELD (24H)</p>
+            <div class="flex items-baseline space-x-2"><span class="text-6xl font-black">184.2</span><span class="text-teal-400 text-lg">KWH</span></div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-red-500">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">STATISTICAL DELTA</p>
+            <div class="flex items-baseline space-x-2"><span class="text-6xl font-black text-red-500">-2.4%</span></div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-white/10">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">PHYSICS_UPTIME</p>
+            <div class="flex items-baseline space-x-2"><span class="text-6xl font-black">99.8%</span></div>
+        </div>
+    </section>
+
+    <section class="glass-card p-12 mb-12">
+        <div class="flex justify-between items-start mb-12">
+            <div>
+                <div class="accent-line"></div>
+                <h3 class="text-3xl font-black tracking-tighter uppercase">Main Telemetry Canvas</h3>
+            </div>
+        </div>
+        <div class="h-[500px]"><canvas id="mainChart"></canvas></div>
+    </section>
+
+    <section class="glass-card p-12 mb-12">
+        <div class="flex justify-between items-end mb-12">
+            <div><div class="accent-line"></div><h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3></div>
+        </div>
+        <div class="flex">
+            <div class="w-24 grid gap-1 pr-8 text-white/20 text-[9px] font-black" style="grid-template-rows: repeat(12, minmax(0, 1fr));">
+                <div class="flex items-center h-[35px]">ST_01</div><div class="flex items-center h-[35px]">ST_02</div><div class="flex items-center h-[35px]">ST_03</div>
+                <div class="flex items-center h-[35px]">ST_04</div><div class="flex items-center h-[35px]">ST_05</div><div class="flex items-center h-[35px]">ST_06</div>
+                <div class="flex items-center h-[35px]">ST_07</div><div class="flex items-center h-[35px]">ST_08</div><div class="flex items-center h-[35px]">ST_09</div>
+                <div class="flex items-center h-[35px]">ST_10</div><div class="flex items-center h-[35px]">ST_11</div><div class="flex items-center h-[35px]">ST_12</div>
+            </div>
+            <div class="flex-1">
+                <div id="heatmap" class="space-y-1"></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-12">
+        <div class="glass-card p-10 flex flex-col">
+            <div class="accent-line"></div>
+            <h3 class="text-2xl font-black tracking-tighter mb-10">STATISTICAL_FORECAST</h3>
+            <div class="h-[180px] mb-12"><canvas id="forecastChart"></canvas></div>
+            <div class="space-y-12">
+                <div class="border-l-4 border-yellow-400 pl-8 mb-4">
+                    <span class="block text-yellow-400 text-[11px] mb-3 tracking-[0.2em]">PHYSICS_ANOMALY</span>
+                    <p class="normal-case text-[13px] font-normal tracking-normal text-white/60 leading-relaxed">Блок ST_04: відхилення від ідеальної кривої на 18.2%. Ймовірна тінь від нового об'єкта або сильне забруднення.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 glass-card border-t-4 border-t-teal-400 overflow-hidden">
+            <div class="p-10 border-b border-white/5 flex justify-between items-center">
+                <h3 class="text-2xl font-black tracking-tighter italic">RAW_DATA_LAKE_STREAM (SNAPSHOT)</h3>
+            </div>
+            <table class="w-full text-left">
+                <thead class="text-white/20 border-b border-white/5 uppercase text-[10px] font-black">
+                    <tr><th class="px-12 py-8">UNIT_UID</th><th class="px-12 py-8">ISO_TIMESTAMP</th><th class="px-12 py-8 text-right">PWR_OUTPUT (W)</th><th class="px-12 py-8 text-right">CELL_TEMP (C)</th><th class="px-12 py-8 text-right">DEGRAD_INDEX</th></tr>
+                </thead>
+                <tbody class="divide-y divide-white/5 font-normal tracking-normal normal-case text-sm">
+                    <tr class="hover:bg-teal-400/[0.04] transition"><td class="px-12 py-8 font-black tracking-widest text-[11px] uppercase">ST_01_NORTH</td><td class="px-12 py-8 text-white/30 font-mono">2026-03-30T14:00:00Z</td><td class="px-12 py-8 text-right font-black text-xl">12450</td><td class="px-12 py-8 text-right text-white/80">42.1°</td><td class="px-12 py-8 text-right font-bold text-teal-400">0.9984</td></tr>
+                    <tr class="hover:bg-teal-400/[0.04] transition"><td class="px-12 py-8 font-black tracking-widest text-[11px] uppercase">ST_04_EAST</td><td class="px-12 py-8 text-white/30 font-mono">2026-03-30T14:00:00Z</td><td class="px-12 py-8 text-right font-black text-xl">3120</td><td class="px-12 py-8 text-right text-white/80">38.4°</td><td class="px-12 py-8 text-right font-bold text-red-500">0.2612</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // Main Chart
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [
+                        { label: 'Reality', data: [0,0,0,0,8,50,180,380,620,780,890,950,960,940,850,550,420,280,150,40,2,0,0,0], borderColor: '#2dd4bf', borderWidth: 5, pointRadius: 0, tension: 0.3, fill: false },
+                        { label: 'Physics_Model', data: [0,0,0,0,10,60,200,450,700,850,920,980,1000,980,920,850,700,450,200,60,10,0,0,0], borderColor: 'rgba(255,255,255,0.08)', borderWidth: 2, borderDash: [8, 4], pointRadius: 0, tension: 0.3, fill: { target: '-1', above: 'rgba(239, 68, 68, 0.15)' } }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.02)' } }, x: { grid: { display: false } } } }
+            });
+
+            // Heatmap
+            const container = document.getElementById('heatmap');
+            for (let s = 0; s < 12; s++) {
+                const row = document.createElement('div'); row.className = 'heatmap-grid';
+                for (let h = 0; h < 24; h++) {
+                    let level = 0;
+                    if (h >= 5 && h <= 19) {
+                        const intensity = Math.sin((h - 5) / 14 * Math.PI);
+                        level = Math.floor(intensity * (0.8 + Math.random() * 0.2) * 11);
+                    }
+                    if (s === 3 && h >= 13 && h <= 16) level = 2; // Hardcoded anomaly for demo
+                    const cell = document.createElement('div'); cell.className = `heat-cell lv-${level}`; row.appendChild(cell);
+                }
+                container.appendChild(row);
+            }
+
+            // Forecast Chart
+            new Chart(document.getElementById('forecastChart').getContext('2d'), {
+                type: 'bar',
+                data: { labels: ['DAY 1', 'DAY 2', 'DAY 3'], datasets: [{ data: [210.4, 138.2, 245.9], backgroundColor: ['#2dd4bf', '#facc15', '#2dd4bf'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+            });
+
+            // Jitter effect
+            setInterval(() => { document.getElementById('pwr-val').innerText = (42.5 + Math.random() * 0.2).toFixed(1); }, 2000);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar IoT | Analytics Protocol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+
+        :root {
+            --bg: #050505;
+            --card-bg: #0d0d0d;
+            --teal: #2dd4bf;
+            --yellow: #facc15;
+            --border: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg);
+            color: #ffffff;
+            margin: 0;
+            overflow-x: hidden;
+            letter-spacing: -0.01em;
+        }
+
+        .solar-text-gradient {
+            background: linear-gradient(90deg, var(--yellow) 0%, var(--teal) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+        }
+
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            gap: 3px;
+        }
+
+        .heat-cell {
+            height: 35px;
+            border-radius: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .lv-0  { background: #0a0f14; }
+        .lv-1  { background: #0d2625; }
+        .lv-2  { background: #0f3d3b; }
+        .lv-3  { background: #115451; }
+        .lv-4  { background: #0d7a74; }
+        .lv-5  { background: #0ea5e9; }
+        .lv-6  { background: #2dd4bf; }
+        .lv-7  { background: #5eead4; }
+        .lv-8  { background: #99f6e4; }
+        .lv-9  { background: #fef08a; }
+        .lv-10 { background: #fde047; }
+        .lv-11 { background: #facc15; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
+
+        .accent-line {
+            height: 4px;
+            width: 60px;
+            background: linear-gradient(90deg, var(--yellow), var(--teal));
+            margin-bottom: 1.5rem;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; }
+
+        table { border-collapse: separate; border-spacing: 0; }
+        .no-select { user-select: none; }
+
+        .offline-badge {
+            display: none;
+            color: #ef4444;
+            font-size: 8px;
+            border: 1px solid #ef4444;
+            padding: 2px 4px;
+            margin-left: 10px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="p-6 lg:p-12 uppercase text-[10px] font-bold tracking-[0.1em] no-select">
+
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-8">
+        <div>
+            <div class="flex items-center space-x-4 mb-3">
+                <div class="w-16 h-[1px] bg-white/20"></div>
+                <span class="text-white/40 tracking-[0.5em]">PHYSICS_BASED_METRICS</span>
+                <span id="offline-indicator" class="offline-badge">[OFFLINE_DATA]</span>
+            </div>
+            <h1 class="text-6xl lg:text-9xl font-black tracking-tighter">SOLAR <span class="solar-text-gradient">GENERIC</span></h1>
+        </div>
+        <div class="flex flex-col items-end border-r-4 border-teal-400 pr-6">
+            <span class="text-white/20 mb-1 tracking-[0.2em]">TELEMETRY_STREAM</span>
+            <span class="text-3xl font-black italic">12_ACTIVE_UNITS</span>
+        </div>
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div class="glass-card p-10 border-l-4 border-yellow-400">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">CURRENT POWER</p>
+            <div class="flex items-baseline space-x-2">
+                <span class="text-6xl font-black" id="pwr-val">--</span>
+                <span class="text-yellow-400 text-lg">KW</span>
+            </div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-teal-400">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">ENERGY YIELD (24H)</p>
+            <div class="flex items-baseline space-x-2">
+                <span class="text-6xl font-black" id="yield-val">--</span>
+                <span class="text-teal-400 text-lg">KWH</span>
+            </div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-red-500">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">STATISTICAL DELTA</p>
+            <div class="flex items-baseline space-x-2">
+                <span class="text-6xl font-black text-red-500" id="delta-val">--%</span>
+            </div>
+        </div>
+        <div class="glass-card p-10 border-l-4 border-white/10">
+            <p class="text-white/40 mb-4 tracking-[0.3em]">PHYSICS_UPTIME</p>
+            <div class="flex items-baseline space-x-2">
+                <span class="text-6xl font-black" id="uptime-val">--%</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="glass-card p-12 mb-12">
+        <div class="flex justify-between items-start mb-12">
+            <div>
+                <div class="accent-line"></div>
+                <h3 class="text-3xl font-black tracking-tighter uppercase">Main Telemetry Canvas</h3>
+                <p class="text-[11px] text-white/20 tracking-widest mt-2">Correlation: Reality vs Physics Model</p>
+            </div>
+            <div class="flex space-x-12 text-[10px]">
+                <div class="flex items-center space-x-3"><div class="w-4 h-4 bg-teal-400"></div> <span class="text-white/60">FACTUAL_GENERATION</span></div>
+                <div class="flex items-center space-x-3"><div class="w-4 h-[1px] bg-white/40"></div> <span class="text-white/20">IDEAL_MODEL</span></div>
+            </div>
+        </div>
+        <div class="h-[500px]">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </section>
+
+    <section class="glass-card p-12 mb-12">
+        <div class="flex justify-between items-end mb-12">
+            <div>
+                <div class="accent-line"></div>
+                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3>
+            </div>
+            <div class="flex items-center space-x-3 text-[9px] font-black text-white/30">
+                <span>0.0 EFF</span>
+                <div class="w-4 h-4 lv-0"></div><div class="w-4 h-4 lv-2"></div><div class="w-4 h-4 lv-4"></div>
+                <div class="w-4 h-4 lv-6"></div><div class="w-4 h-4 lv-8"></div><div class="w-4 h-4 lv-11"></div>
+                <span>1.0 MAX</span>
+            </div>
+        </div>
+
+        <div class="flex">
+            <div class="w-24 grid gap-1 pr-8 text-white/20 text-[9px] font-black" id="heatmap-labels" style="grid-template-rows: repeat(12, minmax(0, 1fr));">
+                <!-- Data populated dynamically -->
+            </div>
+            <div class="flex-1">
+                <div id="heatmap" class="space-y-1"></div>
+                <div class="grid grid-cols-24 mt-8 text-[9px] font-black text-white/20">
+                    <div>00</div><div>01</div><div>02</div><div>03</div><div>04</div><div>05</div><div>06</div><div>07</div><div>08</div><div>09</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-12">
+        <div class="glass-card p-10 flex flex-col">
+            <div class="accent-line"></div>
+            <h3 class="text-2xl font-black tracking-tighter mb-10">STATISTICAL_FORECAST</h3>
+
+            <div class="h-[180px] mb-12">
+                <canvas id="forecastChart"></canvas>
+            </div>
+
+            <div class="space-y-12" id="alerts-container">
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 glass-card border-t-4 border-t-teal-400 overflow-hidden">
+            <div class="p-10 border-b border-white/5 flex justify-between items-center">
+                <h3 class="text-2xl font-black tracking-tighter italic">RAW_DATA_LAKE_STREAM</h3>
+                <span class="text-white/10 tracking-widest">ENCODING: UTF-8 // PROTO: HTTP_POST</span>
+            </div>
+            <table class="w-full text-left">
+                <thead class="text-white/20 border-b border-white/5 uppercase text-[10px] font-black">
+                    <tr>
+                        <th class="px-12 py-8">UNIT_UID</th>
+                        <th class="px-12 py-8">ISO_TIMESTAMP</th>
+                        <th class="px-12 py-8 text-right">PWR_OUTPUT (W)</th>
+                        <th class="px-12 py-8 text-right">CELL_TEMP (C)</th>
+                        <th class="px-12 py-8 text-right">DEGRAD_INDEX</th>
+                    </tr>
+                </thead>
+                <tbody id="raw-table-body" class="divide-y divide-white/5 font-normal tracking-normal normal-case text-sm">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1/analytics';
+        let mainChartInst = null;
+        let forecastChartInst = null;
+        let isOffline = false;
+
+        window.onload = function() {
+            setOffline(false);
+            fetchAllData();
+
+            // Polling Current Power and KPI every 15 seconds
+            setInterval(fetchKPIs, 15000);
+
+            // Polling RAW Data every 15s
+            setInterval(fetchRawInfo, 15000);
+        };
+
+        function setOffline(state) {
+            isOffline = state;
+            document.getElementById('offline-indicator').style.display = state ? 'inline-block' : 'none';
+        }
+
+        async function fetchAllData() {
+            fetchKPIs();
+            fetchTelemetryCanvas();
+            fetchHeatmap();
+            fetchForecast();
+            fetchRawInfo();
+        }
+
+        async function fetchKPIs() {
+            try {
+                const res = await fetch(`${API_BASE}/kpi`);
+                if (!res.ok) throw new Error('Network response was not ok');
+                const data = await res.json();
+
+                document.getElementById('pwr-val').innerText = data.current_power;
+                document.getElementById('yield-val').innerText = data.energy_yield_24h;
+                document.getElementById('delta-val').innerText = data.statistical_delta + '%';
+                document.getElementById('uptime-val').innerText = data.physics_uptime + '%';
+
+                setOffline(false);
+            } catch (err) {
+                console.warn("KPI Fetch failed, showing offline:", err);
+                setOffline(true);
+            }
+        }
+
+        async function fetchTelemetryCanvas() {
+            try {
+                const res = await fetch(`${API_BASE}/telemetry`);
+                if (!res.ok) throw new Error('Offline');
+                const data = await res.json();
+                renderMainChart(data.labels, data.fact, data.model);
+            } catch (err) {
+                console.warn(err);
+                setOffline(true);
+            }
+        }
+
+        async function fetchHeatmap() {
+            try {
+                const res = await fetch(`${API_BASE}/heatmap`);
+                if (!res.ok) throw new Error('Offline');
+                const data = await res.json();
+                renderHeatmap(data.matrix);
+            } catch (err) {
+                console.warn(err);
+                setOffline(true);
+            }
+        }
+
+        async function fetchForecast() {
+            try {
+                const res = await fetch(`${API_BASE}/forecast`);
+                if (!res.ok) throw new Error('Offline');
+                const data = await res.json();
+                renderForecastChart(data.labels, data.forecast);
+                renderAlerts(data.alerts);
+            } catch (err) {
+                console.warn(err);
+                setOffline(true);
+            }
+        }
+
+        async function fetchRawInfo() {
+            try {
+                const res = await fetch(`${API_BASE}/raw`);
+                if (!res.ok) throw new Error('Offline');
+                const resData = await res.json();
+                renderRawTable(resData.data);
+            } catch (err) {
+                console.warn(err);
+                setOffline(true);
+            }
+        }
+
+        function renderMainChart(labels, fact, model) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (mainChartInst) {
+                mainChartInst.data.labels = labels;
+                mainChartInst.data.datasets[0].data = fact;
+                mainChartInst.data.datasets[1].data = model;
+                mainChartInst.update();
+                return;
+            }
+
+            mainChartInst = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Reality',
+                            data: fact,
+                            borderColor: '#2dd4bf',
+                            borderWidth: 5,
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Physics_Model',
+                            data: model,
+                            borderColor: 'rgba(255,255,255,0.08)',
+                            borderWidth: 2,
+                            borderDash: [8, 4],
+                            pointRadius: 0,
+                            tension: 0.3,
+                            fill: {
+                                target: '-1',
+                                above: 'rgba(239, 68, 68, 0.15)' /* Red zone for lost energy */
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.02)' },
+                            ticks: { color: 'rgba(255,255,255,0.1)', font: { family: 'Montserrat', size: 10, weight: 600 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'rgba(255,255,255,0.1)', font: { family: 'Montserrat', size: 10, weight: 600 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderForecastChart(labels, forecast) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+
+            if (forecastChartInst) {
+                forecastChartInst.data.labels = labels;
+                forecastChartInst.data.datasets[0].data = forecast;
+                forecastChartInst.update();
+                return;
+            }
+
+            forecastChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: forecast,
+                        backgroundColor: ['#2dd4bf', '#facc15', '#2dd4bf'],
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.1)', font: { size: 9, weight: 700 } } }
+                    }
+                }
+            });
+        }
+
+        function renderHeatmap(matrix) {
+            const container = document.getElementById('heatmap');
+            const labelsContainer = document.getElementById('heatmap-labels');
+            container.innerHTML = '';
+            labelsContainer.innerHTML = '';
+
+            matrix.forEach((station) => {
+                // Add label
+                const lbl = document.createElement('div');
+                lbl.className = 'flex items-center; h-[35px]';
+                lbl.style.height = '35px'; // match row height
+                lbl.innerText = station.station_id;
+                labelsContainer.appendChild(lbl);
+
+                // Add grid row
+                const row = document.createElement('div');
+                row.className = 'heatmap-grid';
+                station.data.forEach((val) => {
+                    const cell = document.createElement('div');
+                    cell.className = `heat-cell lv-${val}`;
+                    row.appendChild(cell);
+                });
+                container.appendChild(row);
+            });
+        }
+
+        function renderAlerts(alerts) {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = '';
+            alerts.forEach(alert => {
+                container.innerHTML += `
+                <div class="border-l-4 border-${alert.color} pl-8 mb-4">
+                    <span class="block text-${alert.color} text-[11px] mb-3 tracking-[0.2em]">${alert.type}</span>
+                    <p class="normal-case text-[13px] font-normal tracking-normal text-white/60 leading-relaxed">
+                        ${alert.text}
+                    </p>
+                </div>`;
+            });
+        }
+
+        function renderRawTable(data) {
+            const tbody = document.getElementById('raw-table-body');
+            tbody.innerHTML = '';
+
+            data.forEach(row => {
+                let colorClass = 'text-white/80';
+                if (row.eff_index > 0.8) colorClass = 'text-teal-400';
+                else if (row.eff_index >= 0.5) colorClass = 'text-yellow-400';
+                else colorClass = 'text-red-500';
+
+                tbody.innerHTML += `
+                <tr class="hover:bg-teal-400/[0.04] transition">
+                    <td class="px-12 py-8 font-black tracking-widest text-[11px] uppercase">${row.unit_uid}</td>
+                    <td class="px-12 py-8 text-white/30 font-mono">${row.timestamp}</td>
+                    <td class="px-12 py-8 text-right font-black text-xl">${row.power_output_w}</td>
+                    <td class="px-12 py-8 text-right text-white/80">${row.temperature_c}°</td>
+                    <td class="px-12 py-8 text-right font-bold ${colorClass}">${row.eff_index.toFixed(4)}</td>
+                </tr>`;
+            });
+        }
+    </script>
+</body>
+</html>
