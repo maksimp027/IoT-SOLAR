@@ -12,8 +12,8 @@
         body { font-family: 'Montserrat', sans-serif; background-color: var(--bg); color: #ffffff; margin: 0; overflow-x: hidden; letter-spacing: -0.01em; }
         .solar-text-gradient { background: linear-gradient(90deg, var(--yellow) 0%, var(--teal) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 2px; }
-        .heatmap-grid { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
-        .heat-cell { height: 35px; border-radius: 1px; transition: all 0.3s ease; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+        .heat-cell { height: 100%; min-height: 20px; border-radius: 1px; transition: all 0.3s ease; }
         .lv-0{background:#0a0f14;}.lv-1{background:#0d2625;}.lv-2{background:#0f3d3b;}.lv-3{background:#115451;}.lv-4{background:#0d7a74;}.lv-5{background:#0ea5e9;}.lv-6{background:#2dd4bf;}.lv-7{background:#5eead4;}.lv-8{background:#99f6e4;}.lv-9{background:#fef08a;}.lv-10{background:#fde047;}.lv-11{background:#facc15; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);}
         .accent-line { height: 4px; width: 60px; background: linear-gradient(90deg, var(--yellow), var(--teal)); margin-bottom: 1.5rem; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: #333; }
@@ -31,9 +31,24 @@
             </div>
             <h1 class="text-6xl lg:text-9xl font-black tracking-tighter">SOLAR <span class="solar-text-gradient">GENERIC</span></h1>
         </div>
-        <div class="flex flex-col items-end border-r-4 border-teal-400 pr-6">
-            <span class="text-white/20 mb-1 tracking-[0.2em]">TELEMETRY_STREAM</span>
-            <span class="text-3xl font-black italic">12_ACTIVE_UNITS</span>
+        <div class="flex flex-col items-end border-r-4 border-teal-400 pr-6 gap-4">
+            <div class="flex items-center space-x-4">
+                <span class="text-white/40 tracking-[0.2em] text-[8px] uppercase">Analysis Timeframe:</span>
+                <select id="filter-year" class="bg-[#0f0f13] border border-white/20 text-white px-3 py-1 outline-none focus:border-teal-400 cursor-pointer rounded text-[10px] uppercase font-bold tracking-widest">
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                </select>
+                <select id="filter-month" class="bg-[#0f0f13] border border-white/20 text-white px-3 py-1 outline-none focus:border-teal-400 cursor-pointer rounded text-[10px] uppercase font-bold tracking-widest">
+                    <option value="03" selected>MAR</option>
+                    <option value="02">FEB</option>
+                    <option value="01">JAN</option>
+                    <option value="all">ALL MONTHS</option>
+                </select>
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-white/20 mb-1 tracking-[0.2em]">TELEMETRY_STREAM</span>
+                <span class="text-3xl font-black italic">12_ACTIVE_UNITS</span>
+            </div>
         </div>
     </header>
 
@@ -68,17 +83,30 @@
 
     <section class="glass-card p-12 mb-12">
         <div class="flex justify-between items-end mb-12">
-            <div><div class="accent-line"></div><h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3></div>
-        </div>
-        <div class="flex">
-            <div class="w-24 grid gap-1 pr-8 text-white/20 text-[9px] font-black" style="grid-template-rows: repeat(12, minmax(0, 1fr));">
-                <div class="flex items-center h-[35px]">ST_01</div><div class="flex items-center h-[35px]">ST_02</div><div class="flex items-center h-[35px]">ST_03</div>
-                <div class="flex items-center h-[35px]">ST_04</div><div class="flex items-center h-[35px]">ST_05</div><div class="flex items-center h-[35px]">ST_06</div>
-                <div class="flex items-center h-[35px]">ST_07</div><div class="flex items-center h-[35px]">ST_08</div><div class="flex items-center h-[35px]">ST_09</div>
-                <div class="flex items-center h-[35px]">ST_10</div><div class="flex items-center h-[35px]">ST_11</div><div class="flex items-center h-[35px]">ST_12</div>
+            <div>
+                <div class="accent-line"></div>
+                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3>
+                <p class="text-[11px] text-white/20 tracking-widest mt-2 uppercase">Analysis Span: Last 10 Days</p>
             </div>
-            <div class="flex-1">
-                <div id="heatmap" class="space-y-1"></div>
+            <div class="flex items-center space-x-3 text-[9px] font-black text-white/30">
+                <span>0.0 EFF</span>
+                <div class="w-4 h-4 lv-0"></div><div class="w-4 h-4 lv-2"></div><div class="w-4 h-4 lv-4"></div>
+                <div class="w-4 h-4 lv-6"></div><div class="w-4 h-4 lv-8"></div><div class="w-4 h-4 lv-11"></div>
+                <span>1.0 MAX</span>
+            </div>
+        </div>
+        <div class="flex min-h-[400px]">
+            <div class="w-24 grid gap-1 pr-8 text-white/20 text-[9px] font-black" style="grid-template-rows: repeat(12, minmax(0, 1fr));">
+                <div class="flex items-center h-full">ST_01</div><div class="flex items-center h-full">ST_02</div><div class="flex items-center h-full">ST_03</div>
+                <div class="flex items-center h-full">ST_04</div><div class="flex items-center h-full">ST_05</div><div class="flex items-center h-full">ST_06</div>
+                <div class="flex items-center h-full">ST_07</div><div class="flex items-center h-full">ST_08</div><div class="flex items-center h-full">ST_09</div>
+                <div class="flex items-center h-full">ST_10</div><div class="flex items-center h-full">ST_11</div><div class="flex items-center h-full">ST_12</div>
+            </div>
+            <div class="flex-1 flex flex-col justify-between">
+                <div id="heatmap" class="flex-1 flex flex-col gap-1 w-full justify-between"></div>
+                <div class="grid grid-cols-10 mt-8 text-[9px] font-black text-white/20 text-center uppercase" id="heatmap-days">
+                    <!-- Days injected dynamically -->
+                </div>
             </div>
         </div>
     </section>
@@ -130,15 +158,21 @@
 
             // Heatmap
             const container = document.getElementById('heatmap');
+            const daysContainer = document.getElementById('heatmap-days');
+
+            // Render days
+            const today = new Date('2026-03-30');
+            for (let i = 9; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                daysContainer.innerHTML += `<div>${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}</div>`;
+            }
+
             for (let s = 0; s < 12; s++) {
-                const row = document.createElement('div'); row.className = 'heatmap-grid';
-                for (let h = 0; h < 24; h++) {
-                    let level = 0;
-                    if (h >= 5 && h <= 19) {
-                        const intensity = Math.sin((h - 5) / 14 * Math.PI);
-                        level = Math.floor(intensity * (0.8 + Math.random() * 0.2) * 11);
-                    }
-                    if (s === 3 && h >= 13 && h <= 16) level = 2; // Hardcoded anomaly for demo
+                const row = document.createElement('div'); row.className = 'heatmap-grid flex-1';
+                for (let h = 0; h < 10; h++) {
+                    let level = Math.floor(0.8 * (0.8 + Math.random() * 0.2) * 11);
+                    if (s === 3 && h >= 5 && h <= 7) level = 2; // Hardcoded anomaly for demo
                     const cell = document.createElement('div'); cell.className = `heat-cell lv-${level}`; row.appendChild(cell);
                 }
                 container.appendChild(row);
