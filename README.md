@@ -51,8 +51,11 @@ uvicorn main:app --reload --port 8000
 Open `solar_iot_dashboard.html` in your browser to observe the real-time analytics!
 
 ---
+
 ## Live UI Preview
 Don't want to spin up the database and backend? 
 **[Download or open `preview.html`](preview.html)** in your browser to see the interactive UI with static mock data.
+
 ---
+
 *Developed as a Data Analyst / Analytics Engineer portfolio project.*
