@@ -40,7 +40,7 @@
 
         .heatmap-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
+            grid-template-columns: repeat(24, minmax(0, 1fr));
             gap: 3px;
         }
 
@@ -171,27 +171,29 @@
         <div class="flex justify-between items-end mb-12">
             <div>
                 <div class="accent-line"></div>
-                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3>
-                <p class="text-[11px] text-white/20 tracking-widest mt-2 uppercase">Analysis Span: Last 10 Days</p>
+                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Network Energy Heatmap</h3>
+                <p class="text-[11px] text-white/20 tracking-widest mt-2 uppercase">Analysis Span: Last 10 Days | Hourly Grid</p>
             </div>
             <div class="flex items-center space-x-3 text-[9px] font-black text-white/30">
-                <span>0.0 EFF</span>
-                <div class="w-4 h-4 lv-0"></div><div class="w-4 h-4 lv-2"></div><div class="w-4 h-4 lv-4"></div>
-                <div class="w-4 h-4 lv-6"></div><div class="w-4 h-4 lv-8"></div><div class="w-4 h-4 lv-11"></div>
-                <span>1.0 MAX</span>
+                <span>0.0 KWH</span>
+                <div class="w-32 h-4 rounded-sm" style="background: linear-gradient(90deg, #050505 0%, #2dd4bf 50%, #facc15 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
+                <span id="heatmap-max-legend">MAX</span>
             </div>
         </div>
 
         <div class="flex min-h-[400px]">
-            <div class="w-24 flex flex-col justify-between pr-8 text-white/20 text-[9px] font-black" id="heatmap-labels">
-                <!-- Data populated dynamically -->
-            </div>
-            <div class="flex-1 flex flex-col justify-between">
-                <div id="heatmap" class="flex-1 flex flex-col gap-1 w-full justify-between">
+            <div class="w-16 flex flex-col">
+                <div id="heatmap-labels" class="flex-1 flex flex-col gap-[3px] pr-4">
                     <!-- Data populated dynamically -->
                 </div>
-                <div class="grid grid-cols-10 mt-8 text-[9px] font-black text-white/20 text-center uppercase" id="heatmap-days">
-                    <!-- Days injected dynamically -->
+                <div class="h-[24px]"></div>
+            </div>
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div id="heatmap" class="flex-1 flex flex-col gap-[3px] w-full">
+                    <!-- Data populated dynamically -->
+                </div>
+                <div class="grid mt-[4px] gap-[3px] h-[20px] text-[9px] font-black text-white/20 text-center uppercase" style="grid-template-columns: repeat(24, minmax(0, 1fr));" id="heatmap-hours">
+                    <!-- Hours injected dynamically -->
                 </div>
             </div>
         </div>
@@ -416,45 +418,67 @@
                 });
         }
 
+        function getGradientColor(value, min, max) {
+            if (max === min || value <= min) return '#050505';
+            let t = (value - min) / (max - min);
+            t = Math.max(0, Math.min(1, t));
+
+            const c0 = [5, 5, 5];
+            const c1 = [45, 212, 191];
+            const c2 = [250, 204, 21];
+
+            let r, g, b;
+            if (t < 0.5) {
+                const norm = t * 2;
+                r = Math.round(c0[0] + (c1[0] - c0[0]) * norm);
+                g = Math.round(c0[1] + (c1[1] - c0[1]) * norm);
+                b = Math.round(c0[2] + (c1[2] - c0[2]) * norm);
+            } else {
+                const norm = (t - 0.5) * 2;
+                r = Math.round(c1[0] + (c2[0] - c1[0]) * norm);
+                g = Math.round(c1[1] + (c2[1] - c1[1]) * norm);
+                b = Math.round(c1[2] + (c2[2] - c1[2]) * norm);
+            }
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
         function renderHeatmap(matrix) {
             const container = document.getElementById('heatmap');
             const labelsContainer = document.getElementById('heatmap-labels');
-            const daysContainer = document.getElementById('heatmap-days');
+            const hoursContainer = document.getElementById('heatmap-hours');
+
             container.innerHTML = '';
             labelsContainer.innerHTML = '';
-            daysContainer.innerHTML = '';
+            hoursContainer.innerHTML = '';
 
-            // Render days (last 10 days) dynamically based on current date
-            const today = new Date('2026-03-30'); // System constant date
-            for (let i = 9; i >= 0; i--) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - i);
-                daysContainer.innerHTML += `<div>${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}</div>`;
+            for (let i = 0; i < 24; i++) {
+                hoursContainer.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
             }
 
-            matrix.forEach((station) => {
-                // Add label
+            let min = Infinity, max = -Infinity;
+            matrix.forEach(row => {
+                row.data.forEach(val => {
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                });
+            });
+            if (min === Infinity) { min = 0; max = 1; }
+            document.getElementById('heatmap-max-legend').innerText = `${max.toFixed(0)} KWH`;
+
+            matrix.forEach((dayData) => {
                 const lbl = document.createElement('div');
-                lbl.className = 'flex items-center justify-start flex-1';
-                lbl.innerText = station.station_id;
+                lbl.className = 'flex-1 flex items-center justify-end text-[9px] font-black text-white/30';
+                lbl.innerText = dayData.label;
                 labelsContainer.appendChild(lbl);
 
-                // Add grid row
                 const row = document.createElement('div');
                 row.className = 'heatmap-grid flex-1';
-                // Instead of strict 24 hours, assume data comes grouped by day, 10 items max
-                const displayData = station.data.slice(-10); // get last 10
 
-                // padding if data is less than 10
-                for(let k=0; k < 10 - displayData.length; k++) {
+                dayData.data.forEach((val) => {
                     const cell = document.createElement('div');
-                    cell.className = `heat-cell lv-0`;
-                    row.appendChild(cell);
-                }
-
-                displayData.forEach((val) => {
-                    const cell = document.createElement('div');
-                    cell.className = `heat-cell lv-${val}`;
+                    cell.className = 'heat-cell border border-transparent hover:border-white/50 transition-colors';
+                    cell.style.backgroundColor = getGradientColor(val, min, max);
+                    cell.title = `Generated: ${val.toFixed(1)} kWh`;
                     row.appendChild(cell);
                 });
                 container.appendChild(row);

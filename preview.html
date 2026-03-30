@@ -12,9 +12,8 @@
         body { font-family: 'Montserrat', sans-serif; background-color: var(--bg); color: #ffffff; margin: 0; overflow-x: hidden; letter-spacing: -0.01em; }
         .solar-text-gradient { background: linear-gradient(90deg, var(--yellow) 0%, var(--teal) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .glass-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 2px; }
-        .heatmap-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
         .heat-cell { height: 100%; min-height: 20px; border-radius: 1px; transition: all 0.3s ease; }
-        .lv-0{background:#0a0f14;}.lv-1{background:#0d2625;}.lv-2{background:#0f3d3b;}.lv-3{background:#115451;}.lv-4{background:#0d7a74;}.lv-5{background:#0ea5e9;}.lv-6{background:#2dd4bf;}.lv-7{background:#5eead4;}.lv-8{background:#99f6e4;}.lv-9{background:#fef08a;}.lv-10{background:#fde047;}.lv-11{background:#facc15; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);}
         .accent-line { height: 4px; width: 60px; background: linear-gradient(90deg, var(--yellow), var(--teal)); margin-bottom: 1.5rem; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: #333; }
         .demo-badge { color: #facc15; font-size: 10px; border: 1px dashed #facc15; padding: 4px 8px; border-radius: 2px; letter-spacing: 0.1em; }
@@ -85,27 +84,26 @@
         <div class="flex justify-between items-end mb-12">
             <div>
                 <div class="accent-line"></div>
-                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Unit Efficiency Matrix</h3>
-                <p class="text-[11px] text-white/20 tracking-widest mt-2 uppercase">Analysis Span: Last 10 Days</p>
+                <h3 class="text-3xl font-black tracking-tighter uppercase italic">Network Energy Heatmap</h3>
+                <p class="text-[11px] text-white/20 tracking-widest mt-2 uppercase">Analysis Span: Last 10 Days | Hourly Resolution</p>
             </div>
             <div class="flex items-center space-x-3 text-[9px] font-black text-white/30">
-                <span>0.0 EFF</span>
-                <div class="w-4 h-4 lv-0"></div><div class="w-4 h-4 lv-2"></div><div class="w-4 h-4 lv-4"></div>
-                <div class="w-4 h-4 lv-6"></div><div class="w-4 h-4 lv-8"></div><div class="w-4 h-4 lv-11"></div>
-                <span>1.0 MAX</span>
+                <span>0.0 kWh</span>
+                <div class="w-32 h-4 rounded-sm" style="background: linear-gradient(90deg, #050505 0%, #2dd4bf 50%, #facc15 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
+                <span id="heatmap-max-legend">MAX</span>
             </div>
         </div>
         <div class="flex min-h-[400px]">
-            <div class="w-24 grid gap-1 pr-8 text-white/20 text-[9px] font-black" style="grid-template-rows: repeat(12, minmax(0, 1fr));">
-                <div class="flex items-center h-full">ST_01</div><div class="flex items-center h-full">ST_02</div><div class="flex items-center h-full">ST_03</div>
-                <div class="flex items-center h-full">ST_04</div><div class="flex items-center h-full">ST_05</div><div class="flex items-center h-full">ST_06</div>
-                <div class="flex items-center h-full">ST_07</div><div class="flex items-center h-full">ST_08</div><div class="flex items-center h-full">ST_09</div>
-                <div class="flex items-center h-full">ST_10</div><div class="flex items-center h-full">ST_11</div><div class="flex items-center h-full">ST_12</div>
+            <div class="w-16 flex flex-col">
+                <div id="heatmap-labels" class="flex-1 flex flex-col gap-[3px] pr-4">
+                    <!-- Labels populated dynamically -->
+                </div>
+                <div class="h-[24px]"></div>
             </div>
-            <div class="flex-1 flex flex-col justify-between">
-                <div id="heatmap" class="flex-1 flex flex-col gap-1 w-full justify-between"></div>
-                <div class="grid grid-cols-10 mt-8 text-[9px] font-black text-white/20 text-center uppercase" id="heatmap-days">
-                    <!-- Days injected dynamically -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div id="heatmap" class="flex-1 flex flex-col gap-[3px] w-full"></div>
+                <div class="grid mt-[4px] gap-[3px] h-[20px] text-[9px] font-black text-white/20 text-center uppercase" style="grid-template-columns: repeat(24, minmax(0, 1fr));" id="heatmap-hours">
+                    <!-- Hours injected dynamically -->
                 </div>
             </div>
         </div>
@@ -156,27 +154,70 @@
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.02)' } }, x: { grid: { display: false } } } }
             });
 
-            // Heatmap
-            const container = document.getElementById('heatmap');
-            const daysContainer = document.getElementById('heatmap-days');
-
-            // Render days
+            // Heatmap Demo logic
+            const matrix = [];
             const today = new Date('2026-03-30');
             for (let i = 9; i >= 0; i--) {
                 const d = new Date(today);
                 d.setDate(d.getDate() - i);
-                daysContainer.innerHTML += `<div>${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}</div>`;
+                const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth()+1).padStart(2, '0')}`;
+                const data = [];
+                for (let h = 0; h < 24; h++) {
+                    let val = 0;
+                    if (h >= 6 && h <= 19) {
+                        const intensity = Math.sin((h - 6) / 13 * Math.PI);
+                        val = intensity * (300 + Math.random() * 100);
+                    }
+                    if (i === 3 || i === 7) val *= (0.2 + Math.random()*0.3); // cloudy days
+                    data.push(val);
+                }
+                matrix.push({ label: dateStr, data: data });
             }
 
-            for (let s = 0; s < 12; s++) {
-                const row = document.createElement('div'); row.className = 'heatmap-grid flex-1';
-                for (let h = 0; h < 10; h++) {
-                    let level = Math.floor(0.8 * (0.8 + Math.random() * 0.2) * 11);
-                    if (s === 3 && h >= 5 && h <= 7) level = 2; // Hardcoded anomaly for demo
-                    const cell = document.createElement('div'); cell.className = `heat-cell lv-${level}`; row.appendChild(cell);
-                }
-                container.appendChild(row);
+            const container = document.getElementById('heatmap');
+            const labelsContainer = document.getElementById('heatmap-labels');
+            const hoursContainer = document.getElementById('heatmap-hours');
+
+            for (let i = 0; i < 24; i++) {
+                hoursContainer.innerHTML += `<div>${String(i).padStart(2, '0')}</div>`;
             }
+
+            let min = Infinity, max = -Infinity;
+            matrix.forEach(row => { row.data.forEach(val => { if (val < min) min = val; if (val > max) max = val; }); });
+            if (min === Infinity) { min = 0; max = 1; }
+            document.getElementById('heatmap-max-legend').innerText = `${max.toFixed(0)} kWh`;
+
+            function getGradientColor(value, min, max) {
+                if (max === min || value <= min) return '#050505';
+                let t = (value - min) / (max - min);
+                t = Math.max(0, Math.min(1, t));
+                const c0 = [5, 5, 5], c1 = [45, 212, 191], c2 = [250, 204, 21];
+                let r, g, b;
+                if (t < 0.5) {
+                    const norm = t * 2; r = Math.round(c0[0] + (c1[0] - c0[0]) * norm); g = Math.round(c0[1] + (c1[1] - c0[1]) * norm); b = Math.round(c0[2] + (c1[2] - c0[2]) * norm);
+                } else {
+                    const norm = (t - 0.5) * 2; r = Math.round(c1[0] + (c2[0] - c1[0]) * norm); g = Math.round(c1[1] + (c2[1] - c1[1]) * norm); b = Math.round(c1[2] + (c2[2] - c1[2]) * norm);
+                }
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+
+            matrix.forEach((dayData) => {
+                const lbl = document.createElement('div');
+                lbl.className = 'flex-1 flex items-center justify-end text-[9px] font-black text-white/30';
+                lbl.innerText = dayData.label;
+                labelsContainer.appendChild(lbl);
+
+                const row = document.createElement('div');
+                row.className = 'heatmap-grid flex-1';
+                dayData.data.forEach((val) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'heat-cell border border-transparent hover:border-white/50 transition-colors';
+                    cell.style.backgroundColor = getGradientColor(val, min, max);
+                    cell.title = `Generated: ${val.toFixed(1)} kWh`;
+                    row.appendChild(cell);
+                });
+                container.appendChild(row);
+            });
 
             // Forecast Chart
             new Chart(document.getElementById('forecastChart').getContext('2d'), {
